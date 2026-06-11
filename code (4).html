@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPS360 | Demand &amp; Operations Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root{
+            --bg-deep:#060a12;--bg-primary:#0a0f1a;--bg-secondary:#0e1526;--bg-card:#121a2e;
+            --bg-elevated:#162038;--bg-hover:#1a2540;
+            --border-subtle:#1a2540;--border-medium:#243050;
+            --text-primary:#e8ecf4;--text-secondary:#94a3be;--text-muted:#5a6b85;--text-dim:#3d4d65;
+            --gold:#c8a55a;--gold-light:#e0c67a;--gold-dark:#a08040;
+            --green:#22c55e;--green-dim:rgba(34,197,94,0.12);
+            --amber:#f59e0b;--amber-dim:rgba(245,158,11,0.12);
+            --red:#ef4444;--red-dim:rgba(239,68,68,0.1);
+            --blue:#3b82f6;--blue-dim:rgba(59,130,246,0.1);
+            --teal:#14b8a6;--teal-dim:rgba(20,184,166,0.1);
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{background:var(--bg-deep);color:var(--text-primary);font-family:'Source Serif 4',Georgia,serif;-webkit-font-smoothing:antialiased;overflow:hidden;height:100vh}
+        body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");opacity:0.025}
+        ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-medium);border-radius:3px}
+        .font-display{font-family:'Cormorant Garamond',Georgia,serif}.font-mono{font-family:'DM Mono','Courier New',monospace}
+        .app-shell{display:flex;height:100vh;overflow:hidden}
+
+        /* Sidebar */
+        .sidebar{width:252px;min-width:252px;background:linear-gradient(180deg,#0c1220,#0a0f1a);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;z-index:10;overflow-y:auto;position:relative}
+        .sidebar::after{content:'';position:absolute;right:0;top:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent,var(--gold-dark),transparent);opacity:.25}
+        .sidebar-logo{padding:24px 24px 20px;border-bottom:1px solid var(--border-subtle)}
+        .sidebar-logo h1{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;letter-spacing:.18em;color:var(--gold);line-height:1}
+        .sidebar-logo .sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:.12em;text-transform:uppercase;margin-top:6px;display:block}
+        .nav-section{padding:18px 24px 6px;font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.15em;color:var(--text-dim);font-weight:500}
+        .nav-item{display:flex;align-items:center;gap:12px;padding:9px 20px;margin:1px 12px;border-radius:6px;cursor:pointer;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text-muted);transition:all .2s;border:1px solid transparent;position:relative}
+        .nav-item:hover{background:var(--bg-elevated);color:var(--text-secondary);border-color:var(--border-subtle)}
+        .nav-item.active{background:rgba(200,165,90,.06);color:var(--gold);border-color:rgba(200,165,90,.18)}
+        .nav-item.active::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--gold);border-radius:0 2px 2px 0}
+        .nav-icon{width:18px;text-align:center;font-size:13px;flex-shrink:0;opacity:.7}
+        .nav-item.active .nav-icon{opacity:1}
+        .nav-badge{margin-left:auto;background:var(--red-dim);color:var(--red);font-size:9px;padding:2px 7px;border-radius:10px;font-family:'DM Mono',monospace}
+        .sidebar-footer{margin-top:auto;padding:16px 24px;border-top:1px solid var(--border-subtle);font-family:'DM Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:.06em}
+
+        /* Main */
+        .main-content{flex:1;overflow-y:auto;background:var(--bg-primary)}
+        .top-bar{position:sticky;top:0;z-index:20;background:rgba(10,15,26,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border-subtle);padding:11px 32px;display:flex;align-items:center;justify-content:space-between}
+        .breadcrumb{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--text-dim);display:flex;align-items:center;gap:8px}
+        .breadcrumb .sep{color:var(--text-dim);opacity:.4}.breadcrumb .cur{color:var(--text-secondary)}
+        .top-right{display:flex;align-items:center;gap:14px}
+        .search-box{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:6px;padding:7px 14px 7px 32px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-secondary);width:220px;outline:none;transition:border-color .2s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%233d4d65' stroke-width='1.5'%3E%3Ccircle cx='6' cy='6' r='4.5'/%3E%3Cpath d='M10 10l3 3'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:10px center}
+        .search-box:focus{border-color:var(--gold-dark)}.search-box::placeholder{color:var(--text-dim);font-size:10px}
+        .notif-btn{position:relative;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:6px;padding:7px 10px;cursor:pointer;color:var(--text-muted);font-size:14px;transition:all .2s}
+        .notif-btn:hover{border-color:var(--border-medium);color:var(--text-secondary)}
+        .notif-dot{position:absolute;top:5px;right:5px;width:6px;height:6px;background:var(--red);border-radius:50%;box-shadow:0 0 6px rgba(239,68,68,.6)}
+        .clock{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:.04em;min-width:140px;text-align:right}
+
+        .module-area{padding:28px 32px 60px}.module{display:none}.module.active{display:block;animation:fadeModule .35s ease}
+        @keyframes fadeModule{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        .page-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--text-primary);letter-spacing:.02em;line-height:1.2}
+        .page-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-dim);margin-top:5px;letter-spacing:.04em}
+
+        .card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:20px 22px;position:relative;overflow:hidden;transition:border-color .25s,box-shadow .25s,transform .2s}
+        .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(200,165,90,.12),transparent)}
+        .card:hover{border-color:var(--border-medium);box-shadow:0 6px 24px rgba(0,0,0,.3);transform:translateY(-1px)}
+        .card-header{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-dim);font-weight:500;margin-bottom:10px}
+        .card-value{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:600;letter-spacing:-.02em;color:var(--text-primary);line-height:1}
+        .card-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:6px}
+
+        .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin-bottom:20px}
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+        .si{opacity:0;animation:fadeUp .5s ease forwards}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+        .sem{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;flex-shrink:0}
+        .sem.g{background:var(--green);box-shadow:0 0 8px rgba(34,197,94,.5)}.sem.a{background:var(--amber);box-shadow:0 0 8px rgba(245,158,11,.5)}.sem.r{background:var(--red);box-shadow:0 0 8px rgba(239,68,68,.5)}
+        .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:4px;font-family:'DM Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.04em;gap:4px}
+        .badge-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,.2)}.badge-amber{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.2)}.badge-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.18)}.badge-blue{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(59,130,246,.18)}.badge-gold{background:rgba(200,165,90,.1);color:var(--gold);border:1px solid rgba(200,165,90,.18)}.badge-teal{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(20,184,166,.2)}
+
+        .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border-subtle);background:var(--bg-card)}
+        .data-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:11px}
+        .data-table th{text-align:left;padding:11px 14px;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);font-weight:500;border-bottom:1px solid var(--border-medium);background:var(--bg-secondary);position:sticky;top:0;z-index:5}
+        .data-table td{padding:10px 14px;border-bottom:1px solid rgba(26,37,64,.45);color:var(--text-secondary);font-weight:400;vertical-align:middle}
+        .data-table tr{transition:background .15s}.data-table tr:hover td{background:rgba(255,255,255,.012);color:var(--text-primary)}
+        .data-table .hl{color:var(--text-primary);font-weight:500}
+
+        .prog{height:4px;border-radius:2px;background:var(--border-subtle);overflow:hidden;position:relative}
+        .prog-fill{height:100%;border-radius:2px;transition:width .6s ease}
+        .prog-fill.g{background:linear-gradient(90deg,#16a34a,#22c55e)}.prog-fill.a{background:linear-gradient(90deg,#d97706,#f59e0b)}.prog-fill.r{background:linear-gradient(90deg,#dc2626,#ef4444)}.prog-fill.b{background:linear-gradient(90deg,#2563eb,#3b82f6)}.prog-fill.go{background:linear-gradient(90deg,var(--gold-dark),var(--gold))}
+
+        .chart-wrap{position:relative;width:100%;height:260px}.chart-wrap canvas{width:100%!important;height:100%!important}
+
+        .ftabs{display:flex;gap:3px;margin-bottom:16px;padding:3px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-subtle);width:fit-content}
+        .ftab{font-family:'DM Mono',monospace;font-size:10px;padding:6px 14px;border-radius:6px;cursor:pointer;color:var(--text-muted);transition:all .2s;border:none;background:transparent;letter-spacing:.04em}
+        .ftab:hover{color:var(--text-secondary)}.ftab.active{background:var(--bg-elevated);color:var(--gold);box-shadow:0 1px 4px rgba(0,0,0,.2)}
+
+        .toast-box{position:fixed;top:16px;right:16px;z-index:99998;display:flex;flex-direction:column;gap:8px}
+        .toast{background:var(--bg-elevated);border:1px solid var(--border-medium);border-radius:8px;padding:12px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text-secondary);box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;animation:tIn .3s ease,tOut .3s ease 3.7s forwards;max-width:340px}
+        @keyframes tIn{from{opacity:0;transform:translateX(100px)}to{opacity:1;transform:translateX(0)}}@keyframes tOut{from{opacity:1}to{opacity:0}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}.pulse{animation:pulse 2s ease-in-out infinite}
+
+        .alert-bar{border-radius:8px;padding:10px 16px;display:flex;align-items:center;gap:10px;margin-bottom:16px;font-family:'DM Mono',monospace;font-size:11px}
+        .alert-bar.red-alert{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.12);color:#fca5a5}
+        .alert-bar.amber-alert{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.12);color:#fcd34d}
+        .alert-bar.green-alert{background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.12);color:#86efac}
+
+        .progress-bar-wrap{display:flex;align-items:center;gap:8px}
+        .progress-bar-outer{flex:1;height:6px;border-radius:3px;background:var(--border-subtle);overflow:hidden}
+        .progress-bar-inner{height:100%;border-radius:3px;transition:width .6s ease}
+
+        .var-pos{color:var(--green)}.var-neg{color:var(--red)}.var-flat{color:var(--amber)}
+
+        @media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}}
+        @media(max-width:768px){.sidebar{width:56px;min-width:56px}.sidebar-logo h1{font-size:15px;letter-spacing:.1em}.sidebar-logo .sub,.nav-item span:not(.nav-icon),.nav-section{display:none}.nav-item{justify-content:center;padding:12px;margin:1px 4px}.nav-item.active::before{display:none}.module-area{padding:16px}.top-bar{padding:10px 14px}.search-box{width:120px}.clock{display:none}}
+    </style>
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <h1>OPS360</h1>
+            <span class="sub">Demand &amp; Operations Intelligence</span>
+        </div>
+        <div class="nav-section">Overview</div>
+        <div class="nav-item active" data-mod="command"><span class="nav-icon">&#9670;</span><span>Command Center</span></div>
+        <div class="nav-item" data-mod="scorecard"><span class="nav-icon">&#9733;</span><span>KPI Scorecard</span><span class="nav-badge" style="background:var(--amber-dim);color:var(--amber)">2</span></div>
+        <div class="nav-section">Planning</div>
+        <div class="nav-item" data-mod="demand"><span class="nav-icon">&#9674;</span><span>Demand Intelligence</span></div>
+        <div class="nav-item" data-mod="inventory"><span class="nav-icon">&#9638;</span><span>Inventory Command</span></div>
+        <div class="nav-section">Operations</div>
+        <div class="nav-item" data-mod="supply"><span class="nav-icon">&#9889;</span><span>Supply Chain</span></div>
+        <div class="nav-item" data-mod="channels"><span class="nav-icon">&#9673;</span><span>Channel Analytics</span></div>
+        <div class="nav-section">Delivery</div>
+        <div class="nav-item" data-mod="projects"><span class="nav-icon">&#11041;</span><span>Project Portfolio</span><span class="nav-badge" style="background:var(--red-dim);color:var(--red)">2</span></div>
+        <div class="nav-section">Excellence</div>
+        <div class="nav-item" data-mod="process"><span class="nav-icon">&#9881;</span><span>Process &amp; SOPs</span></div>
+        <div class="sidebar-footer">J. Escobar &middot; OPS360 v2.0 &middot; 2026</div>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+        <div class="top-bar">
+            <div class="breadcrumb"><span>OPS360</span><span class="sep">/</span><span class="cur" id="bcCurrent">Command Center</span></div>
+            <div class="top-right">
+                <input type="text" class="search-box" id="globalSearch" placeholder="Search SKUs, vendors, projects...">
+                <div class="notif-btn" id="notifBtn" title="Alerts">&#128276;<div class="notif-dot pulse"></div></div>
+                <div class="clock" id="clock"></div>
+            </div>
+        </div>
+
+        <div class="module-area">
+
+            <!-- ==================== COMMAND CENTER ==================== -->
+            <section class="module active" id="mod-command">
+                <div class="page-title">Executive Command Center</div>
+                <div class="page-sub">Cross-channel demand &amp; operations overview &middot; Last updated: <span id="tsCmd"></span></div>
+                <div style="height:20px"></div>
+                <div class="alert-bar green-alert"><span style="font-size:14px">&#10003;</span> Q2 forecast accuracy at 91.4% &mdash; +3.2pp vs Q1 &middot; Fill rate above 95% target across all channels</div>
+                <div class="metrics-grid" id="cmdMetrics"></div>
+                <div class="grid-2" style="margin-bottom:14px">
+                    <div class="card si" style="animation-delay:.3s">
+                        <div class="card-header">Revenue Trend &middot; Trailing 12 Months ($K)</div>
+                        <div class="chart-wrap"><canvas id="chartRevenue"></canvas></div>
+                    </div>
+                    <div class="card si" style="animation-delay:.4s">
+                        <div class="card-header">Channel Revenue Mix &middot; YTD</div>
+                        <div class="chart-wrap"><canvas id="chartChannelMix"></canvas></div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card si" style="animation-delay:.45s">
+                        <div class="card-header">Forecast Accuracy Trend &middot; Last 8 Weeks</div>
+                        <div class="chart-wrap"><canvas id="chartAccuracy"></canvas></div>
+                    </div>
+                    <div class="card si" style="animation-delay:.5s">
+                        <div class="card-header">Inventory Health Snapshot</div>
+                        <div id="invSnapshot" style="margin-top:8px"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== KPI SCORECARD ==================== -->
+            <section class="module" id="mod-scorecard">
+                <div class="page-title">KPI Scorecard &middot; Weekly Tracker</div>
+                <div class="page-sub">Week 23, 2026 &middot; Next review: Monday Jun 15</div>
+                <div style="height:20px"></div>
+                <div class="ftabs" id="scoreFilter">
+                    <button class="ftab active" data-filter="all">All KPIs</button>
+                    <button class="ftab" data-filter="red">Critical</button>
+                    <button class="ftab" data-filter="amber">Watch</button>
+                    <button class="ftab" data-filter="green">On Track</button>
+                </div>
+                <div class="table-wrap" id="scoreTableWrap"></div>
+                <div style="height:16px"></div>
+                <div class="card">
+                    <div class="card-header">Scorecard Trend &middot; Last 8 Weeks (Green / Amber / Red)</div>
+                    <div class="chart-wrap"><canvas id="chartScorecard"></canvas></div>
+                </div>
+            </section>
+
+            <!-- ==================== DEMAND INTELLIGENCE ==================== -->
+            <section class="module" id="mod-demand">
+                <div class="page-title">Demand Intelligence</div>
+                <div class="page-sub">SKU-level forecast vs actual &middot; Rolling 30-day window &middot; 12 active SKUs</div>
+                <div style="height:20px"></div>
+                <div class="ftabs" id="demandFilter">
+                    <button class="ftab active" data-filter="all">All Categories</button>
+                    <button class="ftab" data-filter="Equipment">Equipment</button>
+                    <button class="ftab" data-filter="Weights">Weights</button>
+                    <button class="ftab" data-filter="Accessories">Accessories</button>
+                    <button class="ftab" data-filter="Recovery">Recovery</button>
+                    <button class="ftab" data-filter="Mats">Mats</button>
+                </div>
+                <div class="table-wrap" id="demandTableWrap"></div>
+            </section>
+
+            <!-- ==================== INVENTORY COMMAND ==================== -->
+            <section class="module" id="mod-inventory">
+                <div class="page-title">Inventory Command</div>
+                <div class="page-sub">12 SKUs &middot; Multi-warehouse &middot; Asia-to-US pipeline visibility</div>
+                <div style="height:20px"></div>
+                <div class="alert-bar amber-alert" id="invAlert"><span style="font-size:14px">&#9888;</span> SKU-1006 Pull-Up Bar &mdash; 21 days of supply, below 30-day safety threshold</div>
+                <div class="table-wrap" id="invTableWrap"></div>
+            </section>
+
+            <!-- ==================== SUPPLY CHAIN ==================== -->
+            <section class="module" id="mod-supply">
+                <div class="page-title">Supply Chain Operations</div>
+                <div class="page-sub">6 vendors &middot; 4 regions &middot; Active PO tracking &middot; Asia manufacturing base</div>
+                <div style="height:20px"></div>
+                <div class="table-wrap" id="supplyTableWrap"></div>
+            </section>
+
+            <!-- ==================== CHANNEL ANALYTICS ==================== -->
+            <section class="module" id="mod-channels">
+                <div class="page-title">Channel Analytics</div>
+                <div class="page-sub">4 channels &middot; Retail &middot; DTC &middot; Commercial &middot; International</div>
+                <div style="height:20px"></div>
+                <div class="grid-4" id="channelCards"></div>
+                <div style="height:16px"></div>
+                <div class="table-wrap" id="channelTableWrap"></div>
+            </section>
+
+            <!-- ==================== PROJECT PORTFOLIO ==================== -->
+            <section class="module" id="mod-projects">
+                <div class="page-title">Project Portfolio</div>
+                <div class="page-sub">12 active projects &middot; Cross-functional coordination &middot; Multi-stakeholder delivery</div>
+                <div style="height:20px"></div>
+                <div class="ftabs" id="projFilter">
+                    <button class="ftab active" data-filter="all">All Projects</button>
+                    <button class="ftab" data-filter="In Progress">In Progress</button>
+                    <button class="ftab" data-filter="At Risk">At Risk</button>
+                    <button class="ftab" data-filter="On Track">On Track</button>
+                    <button class="ftab" data-filter="Complete">Complete</button>
+                </div>
+                <div class="table-wrap" id="projTableWrap"></div>
+            </section>
+
+            <!-- ==================== PROCESS & SOPs ==================== -->
+            <section class="module" id="mod-process">
+                <div class="page-title">Process Excellence &amp; SOP Maturity</div>
+                <div class="page-sub">Continuous improvement framework &middot; Documentation &amp; automation tracking</div>
+                <div style="height:20px"></div>
+                <div class="table-wrap" id="processTableWrap"></div>
+                <div style="height:16px"></div>
+                <div class="card">
+                    <div class="card-header">Aggregate Process Maturity</div>
+                    <div style="display:flex;align-items:baseline;gap:4px">
+                        <span class="font-display" style="font-size:48px;font-weight:700;color:var(--text-primary)" id="procScore">72</span>
+                        <span class="font-mono" style="font-size:18px;color:var(--text-dim)">/100</span>
+                    </div>
+                    <div class="prog" style="margin-top:10px;height:6px"><div class="prog-fill b" style="width:72%" id="procProg"></div></div>
+                    <div class="font-mono" style="font-size:10px;color:var(--text-dim);margin-top:8px">Target: 85+ by Q4 2026</div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+<div class="toast-box" id="toastBox"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const products=[
+    {sku:'SKU-1001',name:'Resistance Band Set Pro',cat:'Accessories',price:29.99,cost:8.50},
+    {sku:'SKU-1002',name:'Premium Yoga Mat 6mm',cat:'Mats',price:49.99,cost:14.00},
+    {sku:'SKU-1003',name:'Foam Roller Deep Tissue',cat:'Recovery',price:39.99,cost:11.50},
+    {sku:'SKU-1004',name:'Adjustable Dumbbell Set',cat:'Weights',price:199.99,cost:68.00},
+    {sku:'SKU-1005',name:'Cast Iron Kettlebell 20kg',cat:'Weights',price:79.99,cost:28.00},
+    {sku:'SKU-1006',name:'Doorway Pull-Up Bar',cat:'Equipment',price:44.99,cost:15.00},
+    {sku:'SKU-1007',name:'Speed Jump Rope Pro',cat:'Accessories',price:19.99,cost:4.50},
+    {sku:'SKU-1008',name:'Exercise Ball 65cm',cat:'Accessories',price:24.99,cost:6.00},
+    {sku:'SKU-1009',name:'Adjustable Workout Bench',cat:'Equipment',price:149.99,cost:52.00},
+    {sku:'SKU-1010',name:'Suspension Trainer System',cat:'Equipment',price:89.99,cost:25.00},
+    {sku:'SKU-1011',name:'Ab Roller Wheel Pro',cat:'Recovery',price:24.99,cost:5.80},
+    {sku:'SKU-1012',name:'Hex Dumbbell Pair 15kg',cat:'Weights',price:69.99,cost:24.00}
+];
+
+const forecast=[
+    {sku:'SKU-1001',fc:2800,ac:2650},{sku:'SKU-1002',fc:2200,ac:2380},
+    {sku:'SKU-1003',fc:1800,ac:1720},{sku:'SKU-1004',fc:380,ac:350},
+    {sku:'SKU-1005',fc:950,ac:1020},{sku:'SKU-1006',fc:620,ac:580},
+    {sku:'SKU-1007',fc:4200,ac:4050},{sku:'SKU-1008',fc:1700,ac:1650},
+    {sku:'SKU-1009',fc:280,ac:310},{sku:'SKU-1010',fc:1100,ac:1050},
+    {sku:'SKU-1011',fc:3200,ac:3080},{sku:'SKU-1012',fc:650,ac:690}
+];
+
+const inventory=[
+    {sku:'SKU-1001',oh:3200,it:1500,oo:2000,dos:34,ss:1400,invVal:27200,status:'g'},
+    {sku:'SKU-1002',oh:1800,it:800,oo:1200,dos:25,ss:1100,invVal:25200,status:'a'},
+    {sku:'SKU-1003',oh:2400,it:1000,oo:0,dos:40,ss:900,invVal:27600,status:'g'},
+    {sku:'SKU-1004',oh:450,it:200,oo:500,dos:28,ss:190,invVal:30600,status:'a'},
+    {sku:'SKU-1005',oh:1200,it:600,oo:800,dos:38,ss:475,invVal:33600,status:'g'},
+    {sku:'SKU-1006',oh:680,it:0,oo:400,dos:21,ss:310,invVal:10200,status:'r'},
+    {sku:'SKU-1007',oh:5500,it:2000,oo:3000,dos:43,ss:2100,invVal:24750,status:'g'},
+    {sku:'SKU-1008',oh:2100,it:900,oo:1500,dos:37,ss:850,invVal:12600,status:'g'},
+    {sku:'SKU-1009',oh:320,it:150,oo:200,dos:22,ss:140,invVal:16800,status:'a'},
+    {sku:'SKU-1010',oh:1500,it:600,oo:800,dos:41,ss:550,invVal:33750,status:'g'},
+    {sku:'SKU-1011',oh:4000,it:1500,oo:2000,dos:38,ss:1600,invVal:23200,status:'g'},
+    {sku:'SKU-1012',oh:780,it:300,oo:500,dos:36,ss:325,invVal:18720,status:'g'}
+];
+
+const vendors=[
+    {id:'V01',name:'Shenzhen Fitness Co.',region:'China',cat:'Equipment',lt:55,otd:92,quality:97,activePOs:4,status:'g'},
+    {id:'V02',name:'Guangzhou Textile Ltd.',region:'China',cat:'Mats & Bands',lt:40,otd:88,quality:95,activePOs:3,status:'a'},
+    {id:'V03',name:'Taiwan Precision Mfg.',region:'Taiwan',cat:'Weights',lt:50,otd:95,quality:99,activePOs:2,status:'g'},
+    {id:'V04',name:'Vietnam Sports Gear',region:'Vietnam',cat:'Accessories',lt:35,otd:85,quality:92,activePOs:5,status:'a'},
+    {id:'V05',name:'India Steel Products',region:'India',cat:'Metal Components',lt:60,otd:78,quality:90,activePOs:2,status:'r'},
+    {id:'V06',name:'Ningbo Rubber Ind.',region:'China',cat:'Recovery',lt:42,otd:90,quality:96,activePOs:3,status:'g'}
+];
+
+const channels=[
+    {id:'retail',name:'Retail / Wholesale',share:42,growth:12,fa:93,fill:97,rev:1020,accounts:156,color:'var(--gold)'},
+    {id:'dtc',name:'Direct-to-Consumer',share:28,growth:35,fa:89,fill:95,rev:680,accounts:'N/A',color:'var(--teal)'},
+    {id:'commercial',name:'Commercial / B2B',share:18,growth:8,fa:91,fill:98,rev:410,accounts:42,color:'var(--blue)'},
+    {id:'intl',name:'International',share:12,growth:22,fa:86,fill:93,rev:320,accounts:28,color:'var(--amber)'}
+];
+
+const projects=[
+    {id:'PRJ-01',name:'Q3 Demand Forecast Model Enhancement',type:'Demand Planning',status:'In Progress',owner:'J. Escobar',due:'2026-07-15',prog:68,pri:'P0',risk:'Medium'},
+    {id:'PRJ-02',name:'Target Retail Account Launch',type:'Channel Expansion',status:'On Track',owner:'J. Escobar',due:'2026-08-01',prog:42,pri:'P0',risk:'High'},
+    {id:'PRJ-03',name:'Safety Stock Optimization Phase II',type:'Inventory',status:'In Progress',owner:'M. Torres',due:'2026-07-30',prog:55,pri:'P1',risk:'Low'},
+    {id:'PRJ-04',name:'ERP Integration &mdash; NetSuite Migration',type:'Systems',status:'At Risk',owner:'J. Escobar',due:'2026-07-01',prog:72,pri:'P0',risk:'High'},
+    {id:'PRJ-05',name:'Vendor Consolidation Initiative',type:'Supply Chain',status:'On Track',owner:'L. Park',due:'2026-09-30',prog:35,pri:'P1',risk:'Medium'},
+    {id:'PRJ-06',name:'LATAM Market Entry &mdash; Demand Assessment',type:'Channel Expansion',status:'Planning',owner:'J. Escobar',due:'2026-12-31',prog:12,pri:'P1',risk:'High'},
+    {id:'PRJ-07',name:'Promotional Calendar Forecast Integration',type:'Demand Planning',status:'Complete',owner:'S. Kim',due:'2026-05-30',prog:100,pri:'P2',risk:'Low'},
+    {id:'PRJ-08',name:'Warehouse Ops &mdash; Pick/Pack Optimization',type:'Operations',status:'In Progress',owner:'J. Escobar',due:'2026-08-15',prog:45,pri:'P1',risk:'Medium'},
+    {id:'PRJ-09',name:'Demand Sensing Pilot &mdash; DTC Channel',type:'Demand Planning',status:'On Track',owner:'M. Torres',due:'2026-09-30',prog:25,pri:'P2',risk:'Low'},
+    {id:'PRJ-10',name:'SOP Documentation Overhaul',type:'Process',status:'In Progress',owner:'J. Escobar',due:'2026-07-31',prog:60,pri:'P1',risk:'Low'},
+    {id:'PRJ-11',name:'Smart Tracker Product Launch',type:'Product Launch',status:'Planning',owner:'J. Escobar',due:'2026-11-15',prog:8,pri:'P2',risk:'Medium'},
+    {id:'PRJ-12',name:'3PL Contract Renegotiation',type:'Supply Chain',status:'At Risk',owner:'L. Park',due:'2026-08-30',prog:40,pri:'P1',risk:'High'}
+];
+
+const kpis=[
+    {kpi:'Forecast Accuracy (WMAPE)',target:'&ge;90%',actual:'91.4%',status:'green',trend:'+1.8pp',owner:'J. Escobar'},
+    {kpi:'Fill Rate',target:'&ge;95%',actual:'96.2%',status:'green',trend:'+0.4pp',owner:'Operations'},
+    {kpi:'Stockout Rate',target:'&le;3%',actual:'2.8%',status:'green',trend:'-0.3pp',owner:'Inventory Mgr'},
+    {kpi:'Inventory Turns (annualized)',target:'&ge;7.0x',actual:'7.2x',status:'green',trend:'+0.3x',owner:'J. Escobar'},
+    {kpi:'Days of Supply',target:'45-60 days',actual:'51 days',status:'green',trend:'-2 days',owner:'Planning'},
+    {kpi:'On-Time Delivery (vendor)',target:'&ge;92%',actual:'89.5%',status:'amber',trend:'-1.2pp',owner:'Logistics'},
+    {kpi:'Excess Inventory %',target:'&le;8%',actual:'6.4%',status:'green',trend:'-0.8pp',owner:'J. Escobar'},
+    {kpi:'Demand Bias',target:'&plusmn;5%',actual:'-2.3%',status:'green',trend:'+0.5pp',owner:'J. Escobar'},
+    {kpi:'Project On-Time Completion',target:'&ge;90%',actual:'88%',status:'amber',trend:'-2pp',owner:'J. Escobar'},
+    {kpi:'SOP Documentation Coverage',target:'&ge;85%',actual:'72%',status:'red',trend:'+8pp',owner:'J. Escobar'}
+];
+
+const processAreas=[
+    {area:'Demand Forecasting',sop:78,auto:65,comp:82,qa:70},
+    {area:'Inventory Management',sop:82,auto:70,comp:88,qa:75},
+    {area:'Order Fulfillment',sop:90,auto:85,comp:92,qa:88},
+    {area:'Vendor Management',sop:68,auto:45,comp:72,qa:55},
+    {area:'Logistics & Shipping',sop:75,auto:60,comp:78,qa:65},
+    {area:'Returns & Quality',sop:85,auto:72,comp:80,qa:78},
+    {area:'Demand Review (S&OP)',sop:70,auto:55,comp:68,qa:60},
+    {area:'Forecasting Systems',sop:58,auto:40,comp:55,qa:42}
+];
+
+// ============================================================
+// HELPERS
+// ============================================================
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const sem=s=>`<span class="sem ${s}"></span>`;
+const badge=(t,cls)=>`<span class="badge ${cls}">${t}</span>`;
+
+function toast(msg,icon='&#9670;'){
+    const box=$('#toastBox'),t=document.createElement('div');
+    t.className='toast';t.innerHTML=`<span style="color:var(--gold)">${icon}</span> ${msg}`;
+    box.appendChild(t);setTimeout(()=>t.remove(),4200);
+}
+function tickClock(){
+    const n=new Date();const s=n.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    if($('#clock'))$('#clock').textContent=s;
+}
+setInterval(tickClock,1000);tickClock();
+function ts(){return new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+
+const fmt=n=>n.toLocaleString('en-US');
+const fmtK=n=>'$'+fmt(n)+'K';
+const pct=(a,b)=>((a-b)/b*100).toFixed(1);
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+const modNames={command:'Command Center',scorecard:'KPI Scorecard',demand:'Demand Intelligence',inventory:'Inventory Command',supply:'Supply Chain',channels:'Channel Analytics',projects:'Project Portfolio',process:'Process & SOPs'};
+function nav(mod){
+    $$('.module').forEach(m=>m.classList.remove('active'));
+    $$('.nav-item').forEach(n=>n.classList.remove('active'));
+    const el=$('#mod-'+mod);if(el)el.classList.add('active');
+    $$(`[data-mod="${mod}"]`).forEach(n=>n.classList.add('active'));
+    if($('#bcCurrent'))$('#bcCurrent').textContent=modNames[mod]||mod;
+    if(mod==='command'){renderRevenueChart();renderChannelChart();renderAccuracyChart();}
+    if(mod==='scorecard'){renderScorecardChart();}
+    if($('#mainContent'))$('#mainContent').scrollTop=0;
+}
+$$('.nav-item').forEach(item=>{item.addEventListener('click',()=>{const m=item.getAttribute('data-mod');if(m)nav(m)})});
+
+// ============================================================
+// RENDER: COMMAND CENTER
+// ============================================================
+function renderCommand(){
+    if($('#tsCmd'))$('#tsCmd').textContent=ts();
+    const totalRev=channels.reduce((s,c)=>s+c.rev,0);
+    const avgFA=(kpis.find(k=>k.kpi.includes('Forecast')).actual);
+    const fillRate=(kpis.find(k=>k.kpi==='Fill Rate').actual);
+    const invTurns=(kpis.find(k=>k.kpi.includes('Turns')).actual);
+    const activeProj=projects.filter(p=>p.status!=='Complete').length;
+    const vendorOTD=(vendors.reduce((s,v)=>s+v.otd,0)/vendors.length).toFixed(1);
+
+    const metrics=[
+        {h:'Total Revenue (MTD)',v:fmtK(totalRev),sub:'Across 4 channels',cls:''},
+        {h:'Forecast Accuracy',v:avgFA,sub:'+3.2pp vs Q1',s:'g'},
+        {h:'Fill Rate',v:fillRate,sub:'Target: &ge;95%',s:'g'},
+        {h:'Inventory Turns',v:invTurns,sub:'Annualized',s:'g'},
+        {h:'Active Projects',v:activeProj,sub:'2 at risk',s:'a'},
+        {h:'Vendor OTD Avg',v:vendorOTD+'%',sub:'6 active vendors',s:parseFloat(vendorOTD)>=92?'g':'a'}
+    ];
+    let html='';
+    metrics.forEach((m,i)=>{
+        html+=`<div class="card si" style="animation-delay:${i*0.06}s"><div class="card-header">${m.h}</div><div class="card-value">${m.v}</div><div class="card-sub">${m.s?sem(m.s):''}${m.sub}</div></div>`;
+    });
+    $('#cmdMetrics').innerHTML=html;
+
+    // Inventory snapshot
+    const rCount=inventory.filter(i=>i.status==='r').length;
+    const aCount=inventory.filter(i=>i.status==='a').length;
+    const gCount=inventory.filter(i=>i.status==='g').length;
+    const totalInv=inventory.reduce((s,i)=>s+i.invVal,0);
+    let snap=`<div style="display:flex;flex-direction:column;gap:12px;padding:4px 0">
+        <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:11px"><span style="color:var(--text-muted)">Total Inventory Value</span><span style="color:var(--text-primary);font-weight:500">${fmtK(totalInv/1000)}</span></div>
+        <div style="display:flex;gap:16px;font-family:'DM Mono',monospace;font-size:11px">
+            <span>${sem('g')} Healthy: ${gCount}</span>
+            <span>${sem('a')} Watch: ${aCount}</span>
+            <span>${sem('r')} Critical: ${rCount}</span>
+        </div>`;
+    inventory.filter(i=>i.status!=='g').forEach(i=>{
+        const p=products.find(p=>p.sku===i.sku);
+        snap+=`<div style="display:flex;justify-content:space-between;align-items:center;font-family:'DM Mono',monospace;font-size:10px;padding:6px 0;border-top:1px solid var(--border-subtle)">
+            <span style="color:var(--text-secondary)">${p.name}</span>
+            <span class="badge ${i.status==='r'?'badge-red':'badge-amber'}">${i.dos} days supply</span>
+        </div>`;
+    });
+    snap+='</div>';
+    $('#invSnapshot').innerHTML=snap;
+}
+
+// ============================================================
+// RENDER: DEMAND
+// ============================================================
+function renderDemand(filter='all'){
+    const data=filter==='all'?forecast:forecast.filter(f=>{const p=products.find(x=>x.sku===f.sku);return p&&p.cat===filter});
+    let html=`<table class="data-table"><thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Forecast</th><th>Actual</th><th>Variance</th><th>Accuracy</th><th>Bias</th></tr></thead><tbody>`;
+    data.forEach(f=>{
+        const p=products.find(x=>x.sku===f.sku);
+        const varPct=((f.ac-f.fc)/f.fc*100).toFixed(1);
+        const acc=(100-Math.abs(parseFloat(varPct))).toFixed(1);
+        const biasClass=parseFloat(varPct)>0?'var-pos':parseFloat(varPct)<0?'var-neg':'var-flat';
+        const biasDir=parseFloat(varPct)>0?'Over':'Under';
+        html+=`<tr><td class="hl">${f.sku}</td><td>${p.name}</td><td>${p.cat}</td>
+            <td>${fmt(f.fc)}</td><td>${fmt(f.ac)}</td>
+            <td class="${biasClass}" style="font-weight:600">${parseFloat(varPct)>0?'+':''}${varPct}%</td>
+            <td><div class="progress-bar-wrap"><div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${acc}%;background:${parseFloat(acc)>=93?'var(--green)':parseFloat(acc)>=89?'var(--amber)':'var(--red)'}"></div></div><span style="font-size:10px;min-width:38px;text-align:right">${acc}%</span></div></td>
+            <td><span class="badge ${parseFloat(Math.abs(varPct))<=5?'badge-green':'badge-amber'}">${biasDir}</span></td></tr>`;
+    });
+    html+='</tbody></table>';
+    $('#demandTableWrap').innerHTML=html;
+}
+
+// ============================================================
+// RENDER: INVENTORY
+// ============================================================
+function renderInventory(){
+    let html=`<table class="data-table"><thead><tr><th>SKU</th><th>Product</th><th>On Hand</th><th>In Transit</th><th>On Order</th><th>DOS</th><th>Safety Stock</th><th>Inv. Value</th><th>Status</th></tr></thead><tbody>`;
+    inventory.forEach(i=>{
+        const p=products.find(x=>x.sku===i.sku);
+        const stLabel={g:'Healthy',a:'Watch',r:'Critical'}[i.status];
+        html+=`<tr><td class="hl">${i.sku}</td><td>${p.name}</td>
+            <td>${fmt(i.oh)}</td><td>${fmt(i.it)}</td><td>${fmt(i.oo)}</td>
+            <td style="font-weight:600;color:${i.dos<25?'var(--red)':i.dos<30?'var(--amber)':'var(--text-primary)'}">${i.dos}d</td>
+            <td>${fmt(i.ss)}</td><td>${fmtK(i.invVal/1000)}</td>
+            <td>${sem(i.status)} ${stLabel}</td></tr>`;
+    });
+    html+='</tbody></table>';
+    $('#invTableWrap').innerHTML=html;
+}
+
+// ============================================================
+// RENDER: SUPPLY CHAIN
+// ============================================================
+function renderSupply(){
+    let html=`<table class="data-table"><thead><tr><th>Vendor</th><th>Region</th><th>Category</th><th>Lead Time</th><th>OTD %</th><th>Quality %</th><th>Active POs</th><th>Status</th></tr></thead><tbody>`;
+    vendors.forEach(v=>{
+        const stLabel={g:'On Track',a:'Monitor',r:'At Risk'}[v.status];
+        html+=`<tr><td class="hl">${v.name}</td><td>${v.region}</td><td>${v.cat}</td>
+            <td>${v.lt} days</td>
+            <td style="font-weight:600;color:${v.otd>=92?'var(--green)':v.otd>=85?'var(--amber)':'var(--red)'}">${v.otd}%</td>
+            <td style="font-weight:600;color:${v.quality>=95?'var(--green)':v.quality>=90?'var(--amber)':'var(--red)'}">${v.quality}%</td>
+            <td>${v.activePOs}</td>
+            <td>${sem(v.status)} ${stLabel}</td></tr>`;
+    });
+    html+='</tbody></table>';
+    $('#supplyTableWrap').innerHTML=html;
+}
+
+// ============================================================
+// RENDER: CHANNELS
+// ============================================================
+function renderChannels(){
+    let cards='';
+    channels.forEach((c,i)=>{
+        cards+=`<div class="card si" style="animation-delay:${i*0.08}s;border-left:3px solid ${c.color}">
+            <div class="card-header">${c.name}</div>
+            <div class="card-value">${fmtK(c.rev)}</div>
+            <div class="card-sub" style="margin-top:10px;line-height:1.9;font-size:10.5px">
+                Share: <strong style="color:var(--text-primary)">${c.share}%</strong> &middot; Growth: <strong class="var-pos">+${c.growth}%</strong><br>
+                Accuracy: <strong style="color:var(--text-primary)">${c.fa}%</strong> &middot; Fill Rate: <strong style="color:var(--text-primary)">${c.fill}%</strong><br>
+                Accounts: <strong style="color:var(--text-primary)">${typeof c.accounts==='number'?fmt(c.accounts):c.accounts}</strong>
+            </div>
+        </div>`;
+    });
+    $('#channelCards').innerHTML=cards;
+
+    let html=`<table class="data-table"><thead><tr><th>Channel</th><th>Revenue</th><th>Share</th><th>Growth</th><th>Forecast Acc.</th><th>Fill Rate</th><th>Accounts</th></tr></thead><tbody>`;
+    channels.forEach(c=>{
+        html+=`<tr><td class="hl">${c.name}</td><td>${fmtK(c.rev)}</td><td>${c.share}%</td>
+            <td class="var-pos" style="font-weight:600">+${c.growth}%</td>
+            <td>${c.fa}%</td><td>${c.fill}%</td>
+            <td>${typeof c.accounts==='number'?fmt(c.accounts):c.accounts}</td></tr>`;
+    });
+    html+='</tbody></table>';
+    $('#channelTableWrap').innerHTML=html;
+}
+
+// ============================================================
+// RENDER: PROJECTS
+// ============================================================
+function renderProjects(filter='all'){
+    const data=filter==='all'?projects:projects.filter(p=>p.status===filter);
+    const priClass={'P0':'badge-red','P1':'badge-amber','P2':'badge-blue','P3':'badge-green'};
+    const statClass={'In Progress':'badge-blue','On Track':'badge-green','At Risk':'badge-red','Complete':'badge-teal','Planning':'badge-gold'};
+    let html=`<table class="data-table"><thead><tr><th>Project</th><th>Type</th><th>Status</th><th>Owner</th><th>Due</th><th>Progress</th><th>Priority</th><th>Risk</th></tr></thead><tbody>`;
+    data.forEach(p=>{
+        const progColor=p.prog>=75?'g':p.prog>=40?'a':'r';
+        html+=`<tr><td class="hl">${p.name}</td><td>${p.type}</td>
+            <td><span class="badge ${statClass[p.status]||'badge-blue'}">${p.status}</span></td>
+            <td>${p.owner}</td><td>${p.due}</td>
+            <td><div class="progress-bar-wrap"><div class="progress-bar-outer" style="width:90px"><div class="progress-bar-inner prog-fill ${progColor}" style="width:${p.prog}%"></div></div><span style="font-size:10px;margin-left:4px">${p.prog}%</span></div></td>
+            <td><span class="badge ${priClass[p.pri]||'badge-blue'}">${p.pri}</span></td>
+            <td><span class="badge ${p.risk==='High'?'badge-red':p.risk==='Medium'?'badge-amber':'badge-green'}">${p.risk}</span></td></tr>`;
+    });
+    html+='</tbody></table>';
+    $('#projTableWrap').innerHTML=html;
+}
+
+// ============================================================
+// RENDER: SCORECARD
+// ============================================================
+function renderScorecard(filter='all'){
+    const data=filter==='all'?kpis:kpis.filter(k=>k.status===filter);
+    let html=`<table class="data-table"><thead><tr><th>KPI</th><th>Target</th><th>Actual</th><th>Status</th><th>Trend</th><th>Owner</th></tr></thead><tbody>`;
+    data.forEach(k=>{
+        const sc={green:'g',amber:'a',red:'r'}[k.status];
+        const label=k.status.charAt(0).toUpperCase()+k.status.slice(1);
+        html+=`<tr><td class="hl">${k.kpi}</td><td>${k.target}</td><td>${k.actual}</td>
+            <td>${sem(sc)} ${label}</td><td>${k.trend}</td><td>${k.owner}</td></tr>`;
+    });
+    html+='</tbody></table>';
+    $('#scoreTableWrap').innerHTML=html;
+}
+
+// ============================================================
+// RENDER: PROCESS
+// ============================================================
+function renderProcess(){
+    let html=`<table class="data-table"><thead><tr><th>Process Area</th><th>SOP Coverage</th><th>Automation</th><th>Compliance</th><th>QA Controls</th><th>Score</th></tr></thead><tbody>`;
+    processAreas.forEach(a=>{
+        const avg=Math.round((a.sop+a.auto+a.comp+a.qa)/4);
+        const bcls=avg>=80?'badge-green':avg>=60?'badge-amber':'badge-red';
+        html+=`<tr><td class="hl">${a.area}</td>
+            <td><div class="progress-bar-wrap"><div class="progress-bar-outer" style="width:55px"><div class="progress-bar-inner prog-fill ${a.sop>=80?'g':a.sop>=60?'a':'r'}" style="width:${a.sop}%"></div></div><span style="font-size:10px;margin-left:4px">${a.sop}%</span></div></td>
+            <td>${a.auto}%</td><td>${a.comp}%</td><td>${a.qa}%</td>
+            <td><span class="badge ${bcls}">${avg}/100</span></td></tr>`;
+    });
+    html+='</tbody></table>';
+    $('#processTableWrap').innerHTML=html;
+    const total=Math.round(processAreas.reduce((s,a)=>s+(a.sop+a.auto+a.comp+a.qa)/4,0)/processAreas.length);
+    if($('#procScore'))$('#procScore').textContent=total;
+    if($('#procProg'))$('#procProg').style.width=total+'%';
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+let chRev,chMix,chAcc,chScore;
+const cDef={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5a6b85',font:{family:"'DM Mono',monospace",size:10},boxWidth:12,padding:16}}}};
+
+function renderRevenueChart(){
+    const ctx=$('#chartRevenue');if(!ctx||typeof Chart==='undefined')return;
+    if(chRev)chRev.destroy();
+    const months=['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+    const retail=[820,845,890,920,1050,1280,780,810,920,960,980,1020];
+    const dtc=[480,510,530,560,680,820,520,540,590,620,650,680];
+    const comm=[320,330,340,350,380,400,310,320,360,380,390,410];
+    const intl=[180,195,210,230,260,310,200,215,250,270,290,320];
+    chRev=new Chart(ctx,{type:'line',data:{labels:months,datasets:[
+        {label:'Retail',data:retail,borderColor:'#c8a55a',backgroundColor:'rgba(200,165,90,.08)',fill:true,tension:.35,pointRadius:2,borderWidth:2},
+        {label:'DTC',data:dtc,borderColor:'#14b8a6',backgroundColor:'transparent',fill:false,tension:.35,pointRadius:2,borderWidth:2},
+        {label:'Commercial',data:comm,borderColor:'#3b82f6',backgroundColor:'transparent',fill:false,tension:.35,pointRadius:2,borderWidth:2},
+        {label:'International',data:intl,borderColor:'#f59e0b',backgroundColor:'transparent',fill:false,tension:.35,pointRadius:2,borderWidth:2}
+    ]},options:{...cDef,scales:{x:{ticks:{color:'#3d4d65',font:{family:"'DM Mono',monospace",size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#3d4d65',font:{family:"'DM Mono',monospace",size:10},callback:v=>'$'+v+'K'},grid:{color:'rgba(255,255,255,.03)'}}}}});
+}
+
+function renderChannelChart(){
+    const ctx=$('#chartChannelMix');if(!ctx||typeof Chart==='undefined')return;
+    if(chMix)chMix.destroy();
+    chMix=new Chart(ctx,{type:'doughnut',data:{labels:channels.map(c=>c.name),datasets:[{data:channels.map(c=>c.rev),backgroundColor:['#c8a55a','#14b8a6','#3b82f6','#f59e0b'],borderColor:'#121a2e',borderWidth:3,hoverOffset:8}]},options:{...cDef,cutout:'62%',plugins:{...cDef.plugins,legend:{position:'bottom',labels:{color:'#5a6b85',font:{family:"'DM Mono',monospace",size:10},boxWidth:10,padding:12}}}}});
+}
+
+function renderAccuracyChart(){
+    const ctx=$('#chartAccuracy');if(!ctx||typeof Chart==='undefined')return;
+    if(chAcc)chAcc.destroy();
+    const weeks=['W16','W17','W18','W19','W20','W21','W22','W23'];
+    chAcc=new Chart(ctx,{type:'bar',data:{labels:weeks,datasets:[{label:'Forecast Accuracy %',data:[86.2,87.5,87.1,88.8,89.4,90.1,90.8,91.4],backgroundColor:'rgba(200,165,90,.45)',borderColor:'#c8a55a',borderWidth:1,borderRadius:4}]},options:{...cDef,scales:{x:{ticks:{color:'#3d4d65',font:{family:"'DM Mono',monospace",size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{min:82,max:95,ticks:{color:'#3d4d65',font:{family:"'DM Mono',monospace",size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.03)'}}},plugins:{...cDef.plugins,legend:{display:false}}}});
+}
+
+function renderScorecardChart(){
+    const ctx=$('#chartScorecard');if(!ctx||typeof Chart==='undefined')return;
+    if(chScore)chScore.destroy();
+    const weeks=['W16','W17','W18','W19','W20','W21','W22','W23'];
+    chScore=new Chart(ctx,{type:'bar',data:{labels:weeks,datasets:[
+        {label:'Green',data:[6,6,7,7,8,8,8,8],backgroundColor:'rgba(34,197,94,.5)',borderRadius:3},
+        {label:'Amber',data:[2,2,2,2,1,1,1,1],backgroundColor:'rgba(245,158,11,.5)',borderRadius:3},
+        {label:'Red',data:[2,2,1,1,1,1,1,1],backgroundColor:'rgba(239,68,68,.5)',borderRadius:3}
+    ]},options:{...cDef,scales:{x:{stacked:true,ticks:{color:'#3d4d65',font:{family:"'DM Mono',monospace",size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{stacked:true,max:10,ticks:{color:'#3d4d65',font:{family:"'DM Mono',monospace",size:10},stepSize:2},grid:{color:'rgba(255,255,255,.03)'}}}}});
+}
+
+// ============================================================
+// FILTER TABS
+// ============================================================
+function setupFilter(id,renderFn){
+    const el=$('#'+id);if(!el)return;
+    el.addEventListener('click',e=>{
+        if(e.target.classList.contains('ftab')){
+            $$(`#${id} .ftab`).forEach(t=>t.classList.remove('active'));
+            e.target.classList.add('active');
+            renderFn(e.target.dataset.filter);
+        }
+    });
+}
+setupFilter('demandFilter',renderDemand);
+setupFilter('projFilter',renderProjects);
+setupFilter('scoreFilter',renderScorecard);
+
+// ============================================================
+// SEARCH
+// ============================================================
+$('#globalSearch')?.addEventListener('input',function(){
+    const q=this.value.toLowerCase().trim();if(!q)return;
+    const pm=products.filter(p=>p.name.toLowerCase().includes(q)||p.sku.toLowerCase().includes(q));
+    if(pm.length){nav('demand');renderDemand('all');setTimeout(()=>{$$('#demandTableWrap tr').forEach(tr=>{const t=tr.textContent.toLowerCase();if(t.includes(q))tr.style.background='rgba(200,165,90,.06)';else if(q.length>2)tr.style.opacity='.4'})},50);return;}
+    const vm=vendors.filter(v=>v.name.toLowerCase().includes(q));
+    if(vm.length){nav('supply');renderSupply();setTimeout(()=>{$$('#supplyTableWrap tr').forEach(tr=>{const t=tr.textContent.toLowerCase();if(t.includes(q))tr.style.background='rgba(200,165,90,.06)';else if(q.length>2)tr.style.opacity='.4'})},50);return;}
+    const prm=projects.filter(p=>p.name.toLowerCase().includes(q)||p.owner.toLowerCase().includes(q));
+    if(prm.length){nav('projects');renderProjects('all');setTimeout(()=>{$$('#projTableWrap tr').forEach(tr=>{const t=tr.textContent.toLowerCase();if(t.includes(q))tr.style.background='rgba(200,165,90,.06)';else if(q.length>2)tr.style.opacity='.4'})},50);}
+});
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+$('#notifBtn')?.addEventListener('click',()=>{
+    toast('SKU-1006 Pull-Up Bar: 21 days supply, below 30-day threshold','&#9888;');
+    setTimeout(()=>toast('India Steel Products: OTD at 78%, below 92% target','&#9888;'),400);
+    setTimeout(()=>toast('2 projects flagged At Risk: ERP Migration, 3PL Contract','&#9888;'),800);
+});
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT')return;
+    const s={'1':'command','2':'scorecard','3':'demand','4':'inventory','5':'supply','6':'channels','7':'projects','8':'process'};
+    if(s[e.key])nav(s[e.key]);
+    if(e.key==='/'){e.preventDefault();$('#globalSearch')?.focus();}
+});
+
+// ============================================================
+// INIT
+// ============================================================
+function init(){
+    renderCommand();renderDemand();renderInventory();renderSupply();
+    renderChannels();renderProjects();renderScorecard();renderProcess();
+    renderRevenueChart();renderChannelChart();renderAccuracyChart();
+    setTimeout(()=>toast('OPS360 loaded &mdash; press / to search, 1-8 for modules','&#9670;'),600);
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init)}else{init()}
+</script>
+</body>
+</html>
